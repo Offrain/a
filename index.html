@@ -1,78 +1,8 @@
-<!DOCTYPE html>
-<html lang="kk">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тест жүйесі</title>
-
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-
-.question {
-    margin-bottom: 25px;
-    padding: 10px;
-    border-bottom: 1px solid #ddd;
-}
-
-.variant {
-    display: block;
-    margin: 5px 0;
-    cursor: pointer;
-}
-
-.correct { color: green; }
-.incorrect { color: red; }
-
-.pagination { margin-top: 20px; }
-
-.pagination button {
-    margin: 5px;
-    padding: 5px 10px;
-    cursor: pointer;
-}
-
-.active {
-    background: blue;
-    color: white;
-    font-weight: bold;
-}
-</style>
-</head>
-
-<body>
-
-<!-- 🔐 LOGIN -->
-<div id="auth">
-  <h2>Кіру</h2>
-
-  <input id="email" placeholder="email"><br><br>
-  <input id="pass" type="password" placeholder="password"><br><br>
-
-  <button onclick="login()">Кіру</button>
-  <button onclick="register()">Тіркелу</button>
-
-  <p id="msg"></p>
-</div>
-
-<!-- 🔥 APP (ТВОЙ ТЕСТ) -->
-<div id="app" style="display:none;">
-
-<h1>Тест</h1>
-
-<button onclick="shuffleQuestions()">Барлық сұрақтарды араластыру</button>
-<button onclick="shuffleCurrentPage()">Осы беттегі сұрақтарды араластыру</button>
-<button onclick="resetAll()">Қайта бастау</button>
-<button onclick="showAllAnswers()">Жауап көрсету</button>
-
-<div id="quiz"></div>
-<div id="pagination"></div>
-
-</div>
-
 <script type="module">
 
 /* ================= FIREBASE ================= */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -81,7 +11,18 @@ import {
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* 🔥 ВСТАВЬ СЮДА СВОЙ CONFIG */
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* 🔥 CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCAL20P_NiAsJ54BHTW81FZba0FYNOc6SU",
   authDomain: "prst-99760.firebaseapp.com",
@@ -94,6 +35,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ================= DEVICE ID ================= */
+function getDeviceId() {
+  let id = localStorage.getItem("deviceId");
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
+}
 
 /* ================= AUTH ================= */
 
@@ -103,6 +55,14 @@ window.register = async function () {
 
   try {
     await createUserWithEmailAndPassword(auth, email, pass);
+
+    await setDoc(doc(db, "users", email), {
+      email,
+      deviceId: getDeviceId(),
+      switchCount: 0,
+      blocked: false
+    });
+
     setMsg("OK тіркелді");
   } catch (e) {
     setMsg(e.message);
@@ -121,71 +81,83 @@ window.login = async function () {
 
     const deviceId = getDeviceId();
 
-    // если юзер новый
     if (!snap.exists()) {
       await setDoc(ref, {
         email,
         deviceId,
-        sessionActive: true
+        switchCount: 0,
+        blocked: false
       });
-      return;
+    } else {
+      const data = snap.data();
+
+      // 🔥 смена устройства
+      if (data.deviceId && data.deviceId !== deviceId) {
+        let newCount = (data.switchCount || 0) + 1;
+
+        await updateDoc(ref, {
+          deviceId,
+          switchCount: newCount
+        });
+
+        if (newCount >= 3) {
+          await updateDoc(ref, { blocked: true });
+          await signOut(auth);
+          setMsg("BLOCKED (3 device changes)");
+          return;
+        }
+      } else {
+        await updateDoc(ref, {
+          deviceId,
+          blocked: false
+        });
+      }
     }
 
-    const data = snap.data();
-
-    // 🔥 ЕСЛИ ДРУГОЕ УСТРОЙСТВО
-    if (data.deviceId && data.deviceId !== deviceId) {
-
-      // сброс старой сессии
-      await updateDoc(ref, {
-        deviceId: deviceId,
-        sessionActive: true
-      });
-
-      setMsg("Сессия сброшена (новое устройство)");
-    }
-
-    // если то же устройство
-    else {
-      await updateDoc(ref, {
-        sessionActive: true
-      });
-
-      setMsg("OK вход");
-    }
+    setMsg("OK кірді");
 
   } catch (e) {
     setMsg(e.message);
   }
 };
 
-/* ================= SHOW / HIDE ================= */
+window.logout = async function () {
+  await signOut(auth);
+};
+
+/* ================= SESSION CHECK ================= */
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    hideApp();
+    document.getElementById("auth").style.display = "block";
+    document.getElementById("app").style.display = "none";
     return;
   }
 
   const ref = doc(db, "users", user.email);
   const snap = await getDoc(ref);
 
-  if (!snap.exists()) {
+  if (snap.exists() && snap.data().blocked) {
     await signOut(auth);
+    alert("BLOCKED USER");
     return;
   }
 
-  const data = snap.data();
-  const deviceId = getDeviceId();
+  document.getElementById("auth").style.display = "none";
+  document.getElementById("app").style.display = "block";
 
-  // ❌ если устройство не совпадает → разлогин
-  if (data.deviceId !== deviceId) {
-    await signOut(auth);
-    alert("Сессия сброшена (другое устройство)");
-    return;
-  }
-
-  showApp();
+  loadTest();
 });
+
+/* ================= HELPERS ================= */
+function emailEl() {
+  return document.getElementById("email");
+}
+function passEl() {
+  return document.getElementById("pass");
+}
+function setMsg(t) {
+  document.getElementById("msg").innerText = t;
+}
 
 /* ================= YOUR TEST CODE ================= */
 
@@ -204,18 +176,14 @@ async function loadTest() {
                 line = line.trim();
                 if (!line) return acc;
 
-                if (line.startsWith('~~')) {
-                    acc.push(line);
-                } else if (acc.length > 0) {
-                    acc[acc.length - 1] += '\n' + line;
-                }
+                if (line.startsWith('~~')) acc.push(line);
+                else if (acc.length > 0) acc[acc.length - 1] += '\n' + line;
 
                 return acc;
             }, [])
             .filter(Boolean);
 
         renderPage(currentPage);
-        renderPagination();
 
     } catch (error) {
         document.getElementById('quiz').innerHTML =
@@ -229,35 +197,29 @@ function renderPage(page) {
     renderCustomQuestions(allQuestions.slice(start, end), start);
 }
 
-function renderCustomQuestions(questionsArray, globalStartIndex = 0) {
+function renderCustomQuestions(arr, offset) {
     const quiz = document.getElementById('quiz');
     quiz.innerHTML = '';
 
-    questionsArray.forEach((block, index) => {
+    arr.forEach((block, i) => {
+        const lines = block.split('\n');
 
-        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-
-        let question = '';
+        let q = '';
         let variants = [];
-        let correctIndex = 0;
 
-        lines.forEach(line => {
-            if (line.startsWith('~~')) {
-                question = line.replace('~~', '').trim();
-            } else if (line.startsWith('@@')) {
-                variants.push(line.replace('@@', '').trim());
-            }
+        lines.forEach(l => {
+            if (l.startsWith('~~')) q = l.replace('~~','');
+            if (l.startsWith('@@')) variants.push(l.replace('@@',''));
         });
 
-        const qIndex = globalStartIndex + index;
-        const correctValue = variants[0];
-        const shuffled = shuffle([...variants]);
+        const correct = variants[0];
+        const shuffled = [...variants].sort(() => Math.random() - 0.5);
 
         const div = document.createElement('div');
         div.className = 'question';
 
         const p = document.createElement('p');
-        p.textContent = (qIndex + 1) + '. ' + question;
+        p.textContent = (offset + i + 1) + '. ' + q;
         div.appendChild(p);
 
         shuffled.forEach(v => {
@@ -266,75 +228,26 @@ function renderCustomQuestions(questionsArray, globalStartIndex = 0) {
 
             const input = document.createElement('input');
             input.type = 'radio';
-            input.name = 'q' + qIndex;
+            input.name = 'q' + (offset + i);
             input.value = v;
 
             input.onchange = () => {
-                checkAnswer(qIndex, v, correctValue);
+                const res = document.getElementById('result' + (offset + i));
+                res.textContent = v === correct ? "Дұрыс ✅" : "Қате ❌";
+                res.className = v === correct ? "correct" : "incorrect";
             };
 
             label.appendChild(input);
-            label.appendChild(document.createTextNode(' ' + v));
+            label.appendChild(document.createTextNode(v));
             div.appendChild(label);
         });
 
-        const result = document.createElement('div');
-        result.id = 'result' + qIndex;
-        div.appendChild(result);
+        const res = document.createElement('div');
+        res.id = 'result' + (offset + i);
+        div.appendChild(res);
 
         quiz.appendChild(div);
     });
 }
 
-function checkAnswer(qIndex, selected, correctValue) {
-    const result = document.getElementById('result' + qIndex);
-
-    if (selected === correctValue) {
-        result.textContent = 'Дұрыс ✅';
-        result.className = 'correct';
-    } else {
-        result.textContent = 'Қате ❌';
-        result.className = 'incorrect';
-    }
-}
-
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
-/* pagination simplified */
-function renderPagination() {}
-
-function shuffleQuestions() {
-    allQuestions = shuffle([...allQuestions]);
-    renderPage(currentPage);
-}
-
-function shuffleCurrentPage() {}
-
-function resetAll() {
-    loadTest();
-}
-
-function showAllAnswers() {}
-
-/* ================= HELPERS ================= */
-
-function emailEl() {
-    return document.getElementById("email");
-}
-function passEl() {
-    return document.getElementById("pass");
-}
-function setMsg(t) {
-    document.getElementById("msg").innerText = t;
-}
-
 </script>
-
-</body>
-</html>

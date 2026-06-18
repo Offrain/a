@@ -262,8 +262,7 @@ fetch('base.txt')
             });
 
             if(questions.length > 0) {
-                // Добавляем глобальный номер (ID) кейсу, чтобы он не терялся при перемешивании
-                allCases.push({ id: allCases.length + 1, title, questions });
+                allCases.push({ title, questions });
             }
         });
 
@@ -282,18 +281,20 @@ function showAll() {
     header.innerHTML = '<h2 class="page-title">Все клинические кейсы</h2>';
     container.innerHTML = '';
 
-    allCases.forEach((c) => {
+    allCases.forEach((c, index) => {
+        const displayNumber = index + 1; // Динамический номер по порядку в списке
         const card = document.createElement('div');
         card.className = 'case-card';
         card.innerHTML = `
-            <div class="case-number">#${c.id}</div>
+            <div class="case-number">#${displayNumber}</div>
             <div class="case-info">
                 <div class="case-title">${c.title}</div>
                 <div class="case-subtitle">${c.questions.length} вопросов</div>
             </div>
             <div class="chevron">${chevronRight}</div>
         `;
-        card.onclick = () => renderSingleCase(c, false);
+        // Передаем displayNumber, чтобы шапка внутри кейса соответствовала номеру из списка
+        card.onclick = () => renderSingleCase(c, false, displayNumber);
         container.appendChild(card);
     });
 }
@@ -304,18 +305,21 @@ function shuffleCasesList() {
         const j = Math.floor(Math.random() * (i + 1));
         [allCases[i], allCases[j]] = [allCases[j], allCases[i]];
     }
-    showAll(); // Перерисовываем список
+    showAll(); // Перерисовываем список, нумерация обновится автоматически
 }
 
 // Рендер одного конкретного кейса
-function renderSingleCase(caseData, isRandomMode = false) {
+function renderSingleCase(caseData, isRandomMode = false, displayNumber = '?') {
     const container = document.getElementById('content-area');
     const header = document.getElementById('page-header');
+
+    // Если это число, добавляем "#", если это кубик (рандом), выводим как есть
+    const displayPrefix = typeof displayNumber === 'number' ? `#${displayNumber}` : displayNumber;
 
     // Меняем шапку на номер + заголовок кейса
     header.innerHTML = `
         <div class="single-case-header">
-            <div class="case-number">#${caseData.id}</div>
+            <div class="case-number">${displayPrefix}</div>
             <div class="case-info">
                 <div class="case-title" style="font-size: 18px;">${caseData.title}</div>
             </div>
@@ -381,7 +385,7 @@ function renderSingleCase(caseData, isRandomMode = false) {
         nextBtn.style.fontSize = '15px';
         
         if (randomQueue.length > 0) {
-            nextBtn.innerHTML = '⏭️ Следующий кейс';
+            nextBtn.innerHTML = '⏭️ Следующий рандомный кейс';
         } else {
             nextBtn.innerHTML = '🔄 Все кейсы пройдены! Начать заново';
         }
@@ -411,7 +415,8 @@ function showRandom() {
     const nextCaseIndex = randomQueue.pop();
     const randomCase = allCases[nextCaseIndex];
     
-    renderSingleCase(randomCase, true);
+    // Передаем эмодзи кубика в качестве номера для режима рандома
+    renderSingleCase(randomCase, true, '🎲');
 }
 
 // Переключение темы

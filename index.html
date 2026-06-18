@@ -21,6 +21,8 @@
         --btn-rand-txt: #7e22ce;
         --btn-all-bg: #e0f2fe;
         --btn-all-txt: #0369a1;
+        --btn-shuffle-bg: #ccfbf1;
+        --btn-shuffle-txt: #0f766e;
 
         --border-color: #e2e8f0;
         --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
@@ -42,6 +44,8 @@
         --btn-rand-txt: #ddd6fe;
         --btn-all-bg: #1e3a8a;
         --btn-all-txt: #bfdbfe;
+        --btn-shuffle-bg: #115e59;
+        --btn-shuffle-txt: #5eead4;
 
         --border-color: #334155;
         --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
@@ -90,6 +94,7 @@
     .btn-theme { background: var(--btn-theme-bg); color: var(--btn-theme-txt); }
     .btn-rand { background: var(--btn-rand-bg); color: var(--btn-rand-txt); }
     .btn-all { background: var(--btn-all-bg); color: var(--btn-all-txt); }
+    .btn-shuffle { background: var(--btn-shuffle-bg); color: var(--btn-shuffle-txt); }
 
     /* 📱 КОНТЕЙНЕР */
     main {
@@ -128,21 +133,18 @@
         border: 1px solid var(--border-color);
     }
 
-    .avatar {
+    .case-number {
         width: 44px;
         height: 44px;
         background: var(--accent-purple);
+        color: white;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
-    }
-
-    .avatar svg {
-        width: 20px;
-        height: 20px;
-        fill: white;
+        font-weight: 700;
+        font-size: 16px;
     }
 
     .case-info {
@@ -225,8 +227,9 @@
 
 <header>
     <button class="btn btn-theme" onclick="toggleTheme()">☀️ Тема</button>
-    <button class="btn btn-rand" onclick="showRandom()">🔀 Рандом кейс</button>
-    <button class="btn btn-all" onclick="showAll()">⬅️ Все кейсы</button>
+    <button class="btn btn-shuffle" onclick="shuffleCasesList()">🔀 Перемешать</button>
+    <button class="btn btn-rand" onclick="showRandom()">🎲 Рандом 1</button>
+    <button class="btn btn-all" onclick="showAll()">⬅️ Все</button>
 </header>
 
 <main>
@@ -236,10 +239,8 @@
 
 <script>
 let allCases = [];
-let randomQueue = []; // Очередь невыпавших кейсов
+let randomQueue = []; // Очередь невыпавших кейсов для режима "Рандом"
 
-// Иконки SVG для вставки в карточки
-const userIcon = `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
 const chevronRight = `<svg viewBox="0 0 24 24"><path d="M9.29 15.88L13.17 12 9.29 8.12a.996.996 0 1 1 1.41-1.41l4.59 4.59c.39.39.39 1.02 0 1.41L10.7 17.3a.996.996 0 0 1-1.41 0c-.38-.39-.39-1.03 0-1.42z"/></svg>`;
 const chevronDown = `<svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.59L18 10l-6 6-6-6 1.41-1.41z"/></svg>`;
 
@@ -261,7 +262,8 @@ fetch('base.txt')
             });
 
             if(questions.length > 0) {
-                allCases.push({ title, questions });
+                // Добавляем глобальный номер (ID) кейсу, чтобы он не терялся при перемешивании
+                allCases.push({ id: allCases.length + 1, title, questions });
             }
         });
 
@@ -280,11 +282,11 @@ function showAll() {
     header.innerHTML = '<h2 class="page-title">Все клинические кейсы</h2>';
     container.innerHTML = '';
 
-    allCases.forEach((c, index) => {
+    allCases.forEach((c) => {
         const card = document.createElement('div');
         card.className = 'case-card';
         card.innerHTML = `
-            <div class="avatar">${userIcon}</div>
+            <div class="case-number">#${c.id}</div>
             <div class="case-info">
                 <div class="case-title">${c.title}</div>
                 <div class="case-subtitle">${c.questions.length} вопросов</div>
@@ -296,15 +298,24 @@ function showAll() {
     });
 }
 
+// Перемешивание списка всех кейсов для отображения
+function shuffleCasesList() {
+    for (let i = allCases.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [allCases[i], allCases[j]] = [allCases[j], allCases[i]];
+    }
+    showAll(); // Перерисовываем список
+}
+
 // Рендер одного конкретного кейса
 function renderSingleCase(caseData, isRandomMode = false) {
     const container = document.getElementById('content-area');
     const header = document.getElementById('page-header');
 
-    // Меняем шапку на аватар + заголовок кейса
+    // Меняем шапку на номер + заголовок кейса
     header.innerHTML = `
         <div class="single-case-header">
-            <div class="avatar">${userIcon}</div>
+            <div class="case-number">#${caseData.id}</div>
             <div class="case-info">
                 <div class="case-title" style="font-size: 18px;">${caseData.title}</div>
             </div>
@@ -351,7 +362,7 @@ function renderSingleCase(caseData, isRandomMode = false) {
                     hiddenQuestions.forEach(hiddenQ => {
                         hiddenQ.style.display = 'block';
                         hiddenQ.classList.add('fade-in');
-                        hiddenQ.classList.remove('hidden-question'); // Убираем класс, чтобы не триггерить повторно
+                        hiddenQ.classList.remove('hidden-question'); // Убираем класс
                     });
                 }
             }
@@ -360,7 +371,7 @@ function renderSingleCase(caseData, isRandomMode = false) {
         container.appendChild(qCard);
     });
 
-    // Если мы в режиме рандома, добавляем кнопку "Следующий"
+    // Если мы в режиме "Рандом 1", добавляем кнопку "Следующий"
     if (isRandomMode) {
         const nextBtn = document.createElement('button');
         nextBtn.className = 'btn btn-rand';
@@ -369,7 +380,6 @@ function renderSingleCase(caseData, isRandomMode = false) {
         nextBtn.style.padding = '14px';
         nextBtn.style.fontSize = '15px';
         
-        // Проверяем, есть ли еще кейсы в очереди
         if (randomQueue.length > 0) {
             nextBtn.innerHTML = '⏭️ Следующий кейс';
         } else {
@@ -381,10 +391,9 @@ function renderSingleCase(caseData, isRandomMode = false) {
     }
 }
 
-// Заполнение и перемешивание очереди для рандома
+// Заполнение и перемешивание очереди для "Рандом 1"
 function initRandomQueue() {
     randomQueue = allCases.map((_, index) => index);
-    // Алгоритм Фишера-Йетса для качественного перемешивания
     for (let i = randomQueue.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [randomQueue[i], randomQueue[j]] = [randomQueue[j], randomQueue[i]];
@@ -395,16 +404,13 @@ function initRandomQueue() {
 function showRandom() {
     if (allCases.length === 0) return;
     
-    // Если очередь пуста, собираем ее заново
     if (randomQueue.length === 0) {
         initRandomQueue();
     }
 
-    // Достаем последний индекс из перемешанной очереди (и удаляем его оттуда)
     const nextCaseIndex = randomQueue.pop();
     const randomCase = allCases[nextCaseIndex];
     
-    // Рендерим кейс с флагом isRandomMode = true
     renderSingleCase(randomCase, true);
 }
 
@@ -414,9 +420,9 @@ function toggleTheme() {
     const themeBtn = document.querySelector('.btn-theme');
     
     if (isDark) {
-        themeBtn.innerHTML = '🌙 Темная тема';
+        themeBtn.innerHTML = '🌙 Тема';
     } else {
-        themeBtn.innerHTML = '☀️ Светлая тема';
+        themeBtn.innerHTML = '☀️ Тема';
     }
 }
 </script>

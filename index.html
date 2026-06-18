@@ -2,84 +2,105 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Кейсы</title>
 
 <style>
 :root {
-    --bg: #f8f9fa;
-    --text: #111;
+    --bg: #f1f3f5;
     --card: #ffffff;
-    --accent: #4dabf7;
+    --text: #111;
+    --accent: #228be6;
 }
 
 .dark {
-    --bg: #121212;
-    --text: #f1f1f1;
-    --card: #1e1e1e;
-    --accent: #339af0;
+    --bg: #0f172a;
+    --card: #1e293b;
+    --text: #e2e8f0;
+    --accent: #38bdf8;
 }
 
 body {
     margin: 0;
-    font-family: Arial;
+    font-family: system-ui;
     background: var(--bg);
     color: var(--text);
-    transition: 0.3s;
 }
 
+/* 🔝 HEADER */
 header {
-    padding: 15px;
-    background: var(--card);
     display: flex;
-    gap: 10px;
+    gap: 8px;
+    padding: 10px;
     position: sticky;
     top: 0;
+    background: var(--card);
+    border-bottom: 1px solid #ccc;
+    z-index: 100;
 }
 
+/* 🔘 КНОПКИ */
 button {
-    padding: 8px 12px;
+    flex: 1;
+    padding: 10px;
     border: none;
-    cursor: pointer;
+    border-radius: 10px;
     background: var(--accent);
     color: white;
-    border-radius: 6px;
+    font-size: 14px;
 }
 
+/* 📱 КОНТЕЙНЕР */
 #cases {
-    padding: 15px;
+    padding: 10px;
+    max-width: 600px;
+    margin: auto;
 }
 
+/* 📦 КЕЙС */
 .case {
     background: var(--card);
-    padding: 12px;
+    padding: 14px;
+    border-radius: 14px;
     margin-bottom: 10px;
-    border-radius: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
 }
 
-.questions {
-    display: none;
-    margin-top: 10px;
-}
-
+/* ❓ ВОПРОС */
 .question {
     background: rgba(0,0,0,0.05);
-    padding: 8px;
+    padding: 10px;
     margin: 6px 0;
-    border-radius: 6px;
-    cursor: pointer;
+    border-radius: 10px;
 }
 
 .dark .question {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.08);
 }
 
+/* ✅ ОТВЕТ */
 .answer {
     display: none;
-    margin-top: 5px;
-    color: #2f9e44;
+    margin-top: 6px;
+    color: #22c55e;
+    font-size: 14px;
+}
+
+/* 📱 МОБИЛКА */
+@media (max-width: 500px) {
+    button {
+        font-size: 12px;
+        padding: 8px;
+    }
+
+    .case {
+        font-size: 14px;
+    }
+
+    .question {
+        font-size: 13px;
+    }
 }
 </style>
 </head>
@@ -87,9 +108,9 @@ button {
 <body>
 
 <header>
-    <button onclick="toggleTheme()">🌙</button>
+    <button onclick="toggleTheme()">🌙 Тема</button>
     <button onclick="showRandom()">🎲 Рандом</button>
-    <button onclick="showAll()">🔙 Назад</button>
+    <button onclick="showAll()">📋 Все</button>
 </header>
 
 <div id="cases"></div>
@@ -101,22 +122,22 @@ fetch('base.txt')
 .then(r => r.text())
 .then(text => {
 
-    const rawCases = text.split('\n@').map(c => c.trim()).filter(c => c);
+    const raw = text.split('\n@').map(c => c.trim()).filter(c => c);
 
-    rawCases.forEach(c => {
+    raw.forEach(c => {
         const lines = c.split('\n').map(l => l.trim()).filter(l => l);
 
-        const title = lines[0].replace(/^@/, '');
+        const title = lines[0].replace('@', '');
         const questions = [];
 
         lines.slice(1).forEach(line => {
             const parts = line.split('@@');
             if (parts.length < 2) return;
 
-            const q = parts[0].replace(/^\d+\.\s*/, '').trim();
-            const a = parts[1].trim();
-
-            questions.push({ q, a });
+            questions.push({
+                q: parts[0].replace(/^\d+\.\s*/, ''),
+                a: parts[1]
+            });
         });
 
         allCases.push({ title, questions });
@@ -125,18 +146,18 @@ fetch('base.txt')
     render(allCases);
 });
 
-function render(casesList) {
+function render(list) {
     const container = document.getElementById('cases');
     container.innerHTML = '';
 
-    casesList.forEach(c => {
+    list.forEach(c => {
 
         const caseDiv = document.createElement('div');
         caseDiv.className = 'case';
         caseDiv.textContent = c.title;
 
         const qWrap = document.createElement('div');
-        qWrap.className = 'questions';
+        qWrap.style.display = 'none';
 
         c.questions.forEach(q => {
 
@@ -168,18 +189,18 @@ function render(casesList) {
     });
 }
 
-// 🌙 ТЕМНЫЙ РЕЖИМ
+/* 🌙 тема */
 function toggleTheme() {
     document.body.classList.toggle('dark');
 }
 
-// 🎲 РАНДОМ
+/* 🎲 рандом */
 function showRandom() {
-    const randomCase = allCases[Math.floor(Math.random() * allCases.length)];
-    render([randomCase]);
+    const one = allCases[Math.floor(Math.random() * allCases.length)];
+    render([one]);
 }
 
-// 🔙 НАЗАД
+/* 📋 назад */
 function showAll() {
     render(allCases);
 }

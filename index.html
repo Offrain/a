@@ -5,80 +5,148 @@
 <title>Кейсы</title>
 
 <style>
-body { font-family: Arial; padding: 20px; }
+:root {
+    --bg: #f8f9fa;
+    --text: #111;
+    --card: #ffffff;
+    --accent: #4dabf7;
+}
+
+.dark {
+    --bg: #121212;
+    --text: #f1f1f1;
+    --card: #1e1e1e;
+    --accent: #339af0;
+}
+
+body {
+    margin: 0;
+    font-family: Arial;
+    background: var(--bg);
+    color: var(--text);
+    transition: 0.3s;
+}
+
+header {
+    padding: 15px;
+    background: var(--card);
+    display: flex;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+}
+
+button {
+    padding: 8px 12px;
+    border: none;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    border-radius: 6px;
+}
+
+#cases {
+    padding: 15px;
+}
 
 .case {
+    background: var(--card);
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
     cursor: pointer;
-    padding: 10px;
-    margin: 8px 0;
-    background: #d0ebff;
     font-weight: bold;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
 .questions {
     display: none;
-    margin-left: 20px;
+    margin-top: 10px;
 }
 
 .question {
+    background: rgba(0,0,0,0.05);
+    padding: 8px;
+    margin: 6px 0;
+    border-radius: 6px;
     cursor: pointer;
-    padding: 6px;
-    margin: 5px 0;
-    background: #f1f3f5;
+}
+
+.dark .question {
+    background: rgba(255,255,255,0.05);
 }
 
 .answer {
     display: none;
     margin-top: 5px;
-    color: green;
+    color: #2f9e44;
 }
 </style>
 </head>
 
 <body>
 
-<h2>Кейсы</h2>
+<header>
+    <button onclick="toggleTheme()">🌙</button>
+    <button onclick="showRandom()">🎲 Рандом</button>
+    <button onclick="showAll()">🔙 Назад</button>
+</header>
+
 <div id="cases"></div>
 
 <script>
+let allCases = [];
+
 fetch('base.txt')
 .then(r => r.text())
 .then(text => {
 
-    const container = document.getElementById('cases');
+    const rawCases = text.split('\n@').map(c => c.trim()).filter(c => c);
 
-    // делим по кейсам (@)
-    const cases = text.split('\n@').map(c => c.trim()).filter(c => c);
-
-    cases.forEach(c => {
-
+    rawCases.forEach(c => {
         const lines = c.split('\n').map(l => l.trim()).filter(l => l);
 
         const title = lines[0].replace(/^@/, '');
+        const questions = [];
+
+        lines.slice(1).forEach(line => {
+            const parts = line.split('@@');
+            if (parts.length < 2) return;
+
+            const q = parts[0].replace(/^\d+\.\s*/, '').trim();
+            const a = parts[1].trim();
+
+            questions.push({ q, a });
+        });
+
+        allCases.push({ title, questions });
+    });
+
+    render(allCases);
+});
+
+function render(casesList) {
+    const container = document.getElementById('cases');
+    container.innerHTML = '';
+
+    casesList.forEach(c => {
 
         const caseDiv = document.createElement('div');
         caseDiv.className = 'case';
-        caseDiv.textContent = title;
+        caseDiv.textContent = c.title;
 
         const qWrap = document.createElement('div');
         qWrap.className = 'questions';
 
-        lines.slice(1).forEach(line => {
-
-            // делим по @@
-            const parts = line.split('@@');
-            if (parts.length < 2) return;
-
-            const questionText = parts[0].replace(/^\d+\.\s*/, '').trim();
-            const answerText = parts[1].trim();
+        c.questions.forEach(q => {
 
             const qDiv = document.createElement('div');
             qDiv.className = 'question';
-            qDiv.textContent = questionText;
+            qDiv.textContent = q.q;
 
             const aDiv = document.createElement('div');
             aDiv.className = 'answer';
-            aDiv.textContent = answerText;
+            aDiv.textContent = q.a;
 
             qDiv.onclick = (e) => {
                 e.stopPropagation();
@@ -98,8 +166,23 @@ fetch('base.txt')
         container.appendChild(caseDiv);
         container.appendChild(qWrap);
     });
+}
 
-});
+// 🌙 ТЕМНЫЙ РЕЖИМ
+function toggleTheme() {
+    document.body.classList.toggle('dark');
+}
+
+// 🎲 РАНДОМ
+function showRandom() {
+    const randomCase = allCases[Math.floor(Math.random() * allCases.length)];
+    render([randomCase]);
+}
+
+// 🔙 НАЗАД
+function showAll() {
+    render(allCases);
+}
 </script>
 
 </body>

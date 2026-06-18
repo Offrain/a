@@ -3,208 +3,354 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Кейсы</title>
-
+<title>Клинические кейсы</title>
 <style>
-:root {
-    --bg: #f1f3f5;
-    --card: #ffffff;
-    --text: #111;
-    --accent: #228be6;
-}
+    :root {
+        /* Светлая тема */
+        --bg-main: #f8fafc;
+        --bg-card: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --accent-purple: #7c3aed;
+        --answer-green: #16a34a;
+        
+        /* Кнопки светлые */
+        --btn-theme-bg: #fef3c7;
+        --btn-theme-txt: #d97706;
+        --btn-rand-bg: #f3e8ff;
+        --btn-rand-txt: #7e22ce;
+        --btn-all-bg: #e0f2fe;
+        --btn-all-txt: #0369a1;
 
-.dark {
-    --bg: #0f172a;
-    --card: #1e293b;
-    --text: #e2e8f0;
-    --accent: #38bdf8;
-}
-
-body {
-    margin: 0;
-    font-family: system-ui;
-    background: var(--bg);
-    color: var(--text);
-}
-
-/* 🔝 HEADER */
-header {
-    display: flex;
-    gap: 8px;
-    padding: 10px;
-    position: sticky;
-    top: 0;
-    background: var(--card);
-    border-bottom: 1px solid #ccc;
-    z-index: 100;
-}
-
-/* 🔘 КНОПКИ */
-button {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 10px;
-    background: var(--accent);
-    color: white;
-    font-size: 14px;
-}
-
-/* 📱 КОНТЕЙНЕР */
-#cases {
-    padding: 10px;
-    max-width: 600px;
-    margin: auto;
-}
-
-/* 📦 КЕЙС */
-.case {
-    background: var(--card);
-    padding: 14px;
-    border-radius: 14px;
-    margin-bottom: 10px;
-    font-weight: 600;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-}
-
-/* ❓ ВОПРОС */
-.question {
-    background: rgba(0,0,0,0.05);
-    padding: 10px;
-    margin: 6px 0;
-    border-radius: 10px;
-}
-
-.dark .question {
-    background: rgba(255,255,255,0.08);
-}
-
-/* ✅ ОТВЕТ */
-.answer {
-    display: none;
-    margin-top: 6px;
-    color: #22c55e;
-    font-size: 14px;
-}
-
-/* 📱 МОБИЛКА */
-@media (max-width: 500px) {
-    button {
-        font-size: 12px;
-        padding: 8px;
+        --border-color: #e2e8f0;
+        --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     }
 
-    .case {
-        font-size: 14px;
+    body.dark {
+        /* Темная тема */
+        --bg-main: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent-purple: #8b5cf6;
+        --answer-green: #4ade80;
+        
+        /* Кнопки темные */
+        --btn-theme-bg: #334155;
+        --btn-theme-txt: #fbbf24;
+        --btn-rand-bg: #4c1d95;
+        --btn-rand-txt: #ddd6fe;
+        --btn-all-bg: #1e3a8a;
+        --btn-all-txt: #bfdbfe;
+
+        --border-color: #334155;
+        --shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
 
-    .question {
+    * { box-sizing: border-box; }
+
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        transition: background-color 0.3s, color 0.3s;
+    }
+
+    /* 🔝 НАВИГАЦИЯ */
+    header {
+        display: flex;
+        gap: 10px;
+        padding: 16px;
+        position: sticky;
+        top: 0;
+        background-color: var(--bg-main);
+        z-index: 100;
+        overflow-x: auto;
+    }
+
+    .btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px 14px;
+        border: none;
+        border-radius: 12px;
         font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: opacity 0.2s;
     }
-}
+
+    .btn:active { opacity: 0.7; }
+
+    .btn-theme { background: var(--btn-theme-bg); color: var(--btn-theme-txt); }
+    .btn-rand { background: var(--btn-rand-bg); color: var(--btn-rand-txt); }
+    .btn-all { background: var(--btn-all-bg); color: var(--btn-all-txt); }
+
+    /* 📱 КОНТЕЙНЕР */
+    main {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 0 16px 24px;
+    }
+
+    .page-title {
+        text-align: center;
+        font-size: 20px;
+        font-weight: 700;
+        margin: 10px 0 24px;
+    }
+
+    .page-title::after {
+        content: '';
+        display: block;
+        width: 40px;
+        height: 3px;
+        background: var(--accent-purple);
+        margin: 8px auto 0;
+        border-radius: 2px;
+    }
+
+    /* 📦 КАРТОЧКА КЕЙСА (СПИСОК) */
+    .case-card {
+        background: var(--bg-card);
+        padding: 16px;
+        border-radius: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        border: 1px solid var(--border-color);
+    }
+
+    .avatar {
+        width: 44px;
+        height: 44px;
+        background: var(--accent-purple);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .avatar svg {
+        width: 20px;
+        height: 20px;
+        fill: white;
+    }
+
+    .case-info {
+        flex: 1;
+        margin-left: 14px;
+    }
+
+    .case-title {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 4px;
+        line-height: 1.3;
+    }
+
+    .case-subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .chevron {
+        width: 20px;
+        height: 20px;
+        fill: var(--text-muted);
+        transition: transform 0.3s;
+    }
+
+    /* ❓ ВОПРОСЫ (АККОРДЕОН) */
+    .question-card {
+        background: var(--bg-card);
+        border-radius: 16px;
+        margin-bottom: 12px;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .question-header {
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .question-header.active .chevron {
+        transform: rotate(180deg);
+    }
+
+    .answer {
+        display: none;
+        padding: 0 16px 16px;
+        color: var(--answer-green);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    /* Шапка открытого кейса */
+    .single-case-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 24px;
+        padding: 10px 0;
+    }
 </style>
 </head>
-
 <body>
 
 <header>
-    <button onclick="toggleTheme()">🌙 Тема</button>
-    <button onclick="showRandom()">🎲 Рандом</button>
-    <button onclick="showAll()">📋 Все</button>
+    <button class="btn btn-theme" onclick="toggleTheme()">☀️ Тема</button>
+    <button class="btn btn-rand" onclick="showRandom()">🔀 Рандом кейс</button>
+    <button class="btn btn-all" onclick="showAll()">⬅️ Все кейсы</button>
 </header>
 
-<div id="cases"></div>
+<main>
+    <div id="page-header"><h2 class="page-title">Все клинические кейсы</h2></div>
+    <div id="content-area"></div>
+</main>
 
 <script>
 let allCases = [];
 
+// Иконки SVG для вставки в карточки
+const userIcon = `<svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
+const chevronRight = `<svg viewBox="0 0 24 24"><path d="M9.29 15.88L13.17 12 9.29 8.12a.996.996 0 1 1 1.41-1.41l4.59 4.59c.39.39.39 1.02 0 1.41L10.7 17.3a.996.996 0 0 1-1.41 0c-.38-.39-.39-1.03 0-1.42z"/></svg>`;
+const chevronDown = `<svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.59L18 10l-6 6-6-6 1.41-1.41z"/></svg>`;
+
+// Загрузка данных
 fetch('base.txt')
-.then(r => r.text())
-.then(text => {
+    .then(r => r.text())
+    .then(text => {
+        const raw = text.split('\n@').map(c => c.trim()).filter(c => c);
 
-    const raw = text.split('\n@').map(c => c.trim()).filter(c => c);
+        raw.forEach(c => {
+            const lines = c.split('\n').map(l => l.trim()).filter(l => l);
+            const title = lines[0].replace('@', '');
+            const questions = [];
 
-    raw.forEach(c => {
-        const lines = c.split('\n').map(l => l.trim()).filter(l => l);
-
-        const title = lines[0].replace('@', '');
-        const questions = [];
-
-        lines.slice(1).forEach(line => {
-            const parts = line.split('@@');
-            if (parts.length < 2) return;
-
-            questions.push({
-                q: parts[0].replace(/^\d+\.\s*/, ''),
-                a: parts[1]
+            lines.slice(1).forEach(line => {
+                const parts = line.split('@@');
+                if (parts.length < 2) return;
+                questions.push({ q: parts[0], a: parts[1] });
             });
+
+            if(questions.length > 0) {
+                allCases.push({ title, questions });
+            }
         });
 
-        allCases.push({ title, questions });
+        showAll(); // Показываем список при старте
+    })
+    .catch(err => {
+        document.getElementById('content-area').innerHTML = 
+            '<p style="text-align:center;">Не удалось загрузить base.txt. Запустите файл через локальный сервер.</p>';
     });
 
-    render(allCases);
-});
-
-function render(list) {
-    const container = document.getElementById('cases');
+// Рендер списка всех кейсов
+function showAll() {
+    const container = document.getElementById('content-area');
+    const header = document.getElementById('page-header');
+    
+    header.innerHTML = '<h2 class="page-title">Все клинические кейсы</h2>';
     container.innerHTML = '';
 
-    list.forEach(c => {
-
-        const caseDiv = document.createElement('div');
-        caseDiv.className = 'case';
-        caseDiv.textContent = c.title;
-
-        const qWrap = document.createElement('div');
-        qWrap.style.display = 'none';
-
-        c.questions.forEach(q => {
-
-            const qDiv = document.createElement('div');
-            qDiv.className = 'question';
-            qDiv.textContent = q.q;
-
-            const aDiv = document.createElement('div');
-            aDiv.className = 'answer';
-            aDiv.textContent = q.a;
-
-            qDiv.onclick = (e) => {
-                e.stopPropagation();
-                aDiv.style.display =
-                    aDiv.style.display === 'none' ? 'block' : 'none';
-            };
-
-            qDiv.appendChild(aDiv);
-            qWrap.appendChild(qDiv);
-        });
-
-        caseDiv.onclick = () => {
-            qWrap.style.display =
-                qWrap.style.display === 'none' ? 'block' : 'none';
-        };
-
-        container.appendChild(caseDiv);
-        container.appendChild(qWrap);
+    allCases.forEach((c, index) => {
+        const card = document.createElement('div');
+        card.className = 'case-card';
+        card.innerHTML = `
+            <div class="avatar">${userIcon}</div>
+            <div class="case-info">
+                <div class="case-title">${c.title}</div>
+                <div class="case-subtitle">${c.questions.length} вопросов</div>
+            </div>
+            <div class="chevron">${chevronRight}</div>
+        `;
+        card.onclick = () => renderSingleCase(c);
+        container.appendChild(card);
     });
 }
 
-/* 🌙 тема */
-function toggleTheme() {
-    document.body.classList.toggle('dark');
+// Рендер одного конкретного кейса (или рандомного)
+function renderSingleCase(caseData) {
+    const container = document.getElementById('content-area');
+    const header = document.getElementById('page-header');
+
+    // Меняем шапку на аватар + заголовок кейса
+    header.innerHTML = `
+        <div class="single-case-header">
+            <div class="avatar">${userIcon}</div>
+            <div class="case-info">
+                <div class="case-title" style="font-size: 18px;">${caseData.title}</div>
+            </div>
+        </div>
+    `;
+    
+    container.innerHTML = '';
+
+    // Рендерим вопросы
+    caseData.questions.forEach((q) => {
+        const qCard = document.createElement('div');
+        qCard.className = 'question-card';
+        
+        qCard.innerHTML = `
+            <div class="question-header">
+                <div class="question-text">${q.q}</div>
+                <div class="chevron">${chevronDown}</div>
+            </div>
+            <div class="answer">${q.a}</div>
+        `;
+
+        const headerEl = qCard.querySelector('.question-header');
+        const answerEl = qCard.querySelector('.answer');
+
+        // Логика открытия/закрытия ответа
+        headerEl.onclick = () => {
+            const isOpen = answerEl.style.display === 'block';
+            answerEl.style.display = isOpen ? 'none' : 'block';
+            if (isOpen) {
+                headerEl.classList.remove('active');
+            } else {
+                headerEl.classList.add('active');
+            }
+        };
+
+        container.appendChild(qCard);
+    });
 }
 
-/* 🎲 рандом */
+// Рандомный кейс
 function showRandom() {
-    const one = allCases[Math.floor(Math.random() * allCases.length)];
-    render([one]);
+    if (allCases.length === 0) return;
+    const randomCase = allCases[Math.floor(Math.random() * allCases.length)];
+    renderSingleCase(randomCase);
 }
 
-/* 📋 назад */
-function showAll() {
-    render(allCases);
+// Переключение темы
+function toggleTheme() {
+    const isDark = document.body.classList.toggle('dark');
+    const themeBtn = document.querySelector('.btn-theme');
+    
+    if (isDark) {
+        themeBtn.innerHTML = '🌙 Темная тема';
+    } else {
+        themeBtn.innerHTML = '☀️ Светлая тема';
+    }
 }
 </script>
-
 </body>
 </html>

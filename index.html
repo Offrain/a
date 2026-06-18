@@ -1,482 +1,106 @@
 <!DOCTYPE html>
-<html lang="kk">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Тест жүйесі</title>
+<title>Кейсы</title>
 
 <style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-}
+body { font-family: Arial; padding: 20px; }
 
-.question {
-    margin-bottom: 25px;
+.case {
+    cursor: pointer;
     padding: 10px;
-    border-bottom: 1px solid #ddd;
-}
-
-.variant {
-    display: block;
-    margin: 5px 0;
-    cursor: pointer;
-}
-
-.correct { color: green; }
-.incorrect { color: red; }
-
-.pagination {
-    margin-top: 20px;
-}
-
-.pagination button {
-    margin: 5px;
-    padding: 5px 10px;
-    cursor: pointer;
-}
-
-.active {
-    background: blue;
-    color: white;
+    margin: 8px 0;
+    background: #d0ebff;
     font-weight: bold;
 }
 
-pre {
-    white-space: pre-line;
+.questions {
+    display: none;
+    margin-left: 20px;
+}
+
+.question {
+    cursor: pointer;
+    padding: 6px;
+    margin: 5px 0;
+    background: #f1f3f5;
+}
+
+.answer {
+    display: none;
+    margin-top: 5px;
+    color: green;
 }
 </style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN -->
-<div id="auth">
-  <h2>Кіру</h2>
+<h2>Кейсы</h2>
+<div id="cases"></div>
 
-  <input id="email" placeholder="email"><br><br>
-  <input id="pass" type="password" placeholder="password"><br><br>
+<script>
+fetch('base.txt')
+.then(r => r.text())
+.then(text => {
 
-  <button onclick="login()">Кіру</button>
+    const container = document.getElementById('cases');
 
-  <p id="msg"></p>
-</div>
+    // делим по кейсам (@)
+    const cases = text.split('\n@').map(c => c.trim()).filter(c => c);
 
-<!-- 🔥 APP (ТВОЙ ТЕСТ) -->
-<div id="app" style="display:none;">
+    cases.forEach(c => {
 
-<h1>Тест</h1>
+        const lines = c.split('\n').map(l => l.trim()).filter(l => l);
 
-<button onclick="shuffleQuestions()">Барлық сұрақтарды араластыру</button>
-<button onclick="shuffleCurrentPage()">Осы беттегі сұрақтарды араластыру</button>
-<button onclick="resetAll()">Қайта бастау</button>
-<button onclick="showAllAnswers()">Жауап көрсету</button>
+        const title = lines[0].replace(/^@/, '');
 
-<div id="quiz"></div>
-<div id="pagination"></div>
+        const caseDiv = document.createElement('div');
+        caseDiv.className = 'case';
+        caseDiv.textContent = title;
 
-  
-<script type="module">
+        const qWrap = document.createElement('div');
+        qWrap.className = 'questions';
 
-/* ================= FIREBASE ================= */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        lines.slice(1).forEach(line => {
 
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+            // делим по @@
+            const parts = line.split('@@');
+            if (parts.length < 2) return;
 
-import {
-  getFirestore,
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+            const questionText = parts[0].replace(/^\d+\.\s*/, '').trim();
+            const answerText = parts[1].trim();
 
-/* ================= CONFIG ================= */
-const firebaseConfig = {
-  apiKey: "AIzaSyCAL20P_NiAsJ54BHTW81FZba0FYNOc6SU",
-  authDomain: "prst-99760.firebaseapp.com",
-  projectId: "prst-99760",
-  storageBucket: "prst-99760.firebasestorage.app",
-  messagingSenderId: "72274793382",
-  appId: "1:72274793382:web:8f0e20d0290e497985f567"
-};
+            const qDiv = document.createElement('div');
+            qDiv.className = 'question';
+            qDiv.textContent = questionText;
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+            const aDiv = document.createElement('div');
+            aDiv.className = 'answer';
+            aDiv.textContent = answerText;
 
-/* ================= DEVICE ================= */
-function getDeviceId() {
-  let id = localStorage.getItem("deviceId");
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem("deviceId", id);
-  }
-  return id;
-}
+            qDiv.onclick = (e) => {
+                e.stopPropagation();
+                aDiv.style.display =
+                    aDiv.style.display === 'none' ? 'block' : 'none';
+            };
 
-/* ================= UI FIX ================= */
-function showApp() {
-  document.getElementById("auth").style.display = "none";
-  document.getElementById("app").style.display = "block";
-}
-
-function hideApp() {
-  document.getElementById("auth").style.display = "block";
-  document.getElementById("app").style.display = "none";
-}
-    
-/* ================= ANTI-CHEAT ================= */
-document.addEventListener("copy", (e) => {
-  e.preventDefault();
-});
-
-document.addEventListener("selectstart", (e) => {
-  e.preventDefault();
-});
-
- document.addEventListener("keydown", (e) => {
-  if (
-    (e.ctrlKey && e.key === "c") ||
-    (e.ctrlKey && e.key === "a") ||
-    (e.ctrlKey && e.key === "u")
-  ) {
-    e.preventDefault();
-  }
-});
-
-/* ================= REGISTER ================= */
-window.register = async function () {
-  const email = emailEl().value;
-  const pass = passEl().value;
-
-  try {
-    await createUserWithEmailAndPassword(auth, email, pass);
-
-    await setDoc(doc(db, "users", email), {
-      email,
-      deviceId: getDeviceId(),
-      blocked: false
-    });
-
-    setMsg("OK тіркелді");
-  } catch (e) {
-    setMsg(e.message);
-  }
-};
-
-/* ================= LOGIN ================= */
-window.login = async function () {
-  const email = emailEl().value;
-  const pass = passEl().value;
-
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
-
-    const ref = doc(db, "users", email);
-    const snap = await getDoc(ref);
-
-    const deviceId = getDeviceId();
-
-    if (!snap.exists()) {
-      await setDoc(ref, {
-        email,
-        deviceId,
-        blocked: false
-      });
-    } else {
-      const data = snap.data();
-
-      if (data.deviceId && data.deviceId !== deviceId) {
-        await signOut(auth);
-        setMsg("❌ Доступ запрещён (другое устройство)");
-        return;
-      }
-
-      await updateDoc(ref, {
-        deviceId,
-        blocked: false
-      });
-    }
-
-    setMsg("OK кірді");
-
-  } catch (e) {
-    setMsg(e.message);
-  }
-};
-
-/* ================= AUTH STATE ================= */
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    hideApp();
-    return;
-  }
-
-  const ref = doc(db, "users", user.email);
-  const snap = await getDoc(ref);
-
-  if (!snap.exists()) {
-    await signOut(auth);
-    hideApp();
-    return;
-  }
-
-  const data = snap.data();
-
-  if (data.deviceId !== getDeviceId()) {
-    await signOut(auth);
-    alert("Сессия закрыта (другое устройство)");
-    hideApp();
-    return;
-  }
-
-  showApp();
-  loadTest(); // 🔥 ВАЖНО: теперь тест всегда грузится
-});
-
-/* ================= HELPERS ================= */
-function emailEl() {
-  return document.getElementById("email");
-}
-function passEl() {
-  return document.getElementById("pass");
-}
-function setMsg(t) {
-  document.getElementById("msg").innerText = t;
-}
-
-/* ================= TEST ================= */
-let currentPage = 1;
-const questionsPerPage = 50;
-let allQuestions = [];
-
-async function loadTest() {
-    try {
-        const response = await fetch('test.txt');
-        const text = await response.text();
-
-        allQuestions = text
-            .split('\n')
-            .reduce((acc, line) => {
-                line = line.trim();
-                if (!line) return acc;
-
-                if (line.startsWith('~~')) {
-                    acc.push(line);
-                } else if (acc.length > 0) {
-                    acc[acc.length - 1] += '\n' + line;
-                }
-
-                return acc;
-            }, [])
-            .filter(Boolean);
-
-        renderPage(currentPage);
-        renderPagination();
-
-    } catch (error) {
-        console.error(error);
-        document.getElementById('quiz').innerHTML =
-            '<p style="color:red;">test.txt жүктелмеді</p>';
-    }
-}
-
-function renderPage(page) {
-    const start = (page - 1) * questionsPerPage;
-    const end = start + questionsPerPage;
-
-    const pageQuestions = allQuestions.slice(start, end);
-    renderCustomQuestions(pageQuestions, start);
-}
-
-function renderCustomQuestions(questionsArray, globalStartIndex = 0) {
-    const quiz = document.getElementById('quiz');
-    quiz.innerHTML = '';
-
-    questionsArray.forEach((block, index) => {
-
-        const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-
-        let question = '';
-        let variants = [];
-        let correctIndex = 0;
-
-        lines.forEach(line => {
-            if (line.startsWith('~~')) {
-                question = line.replace('~~', '').trim();
-            }
-
-            else if (line.startsWith('@@')) {
-                variants.push(line.replace('@@', '').trim());
-            }
-
-            else if (line.includes('{@A@}')) {
-                correctIndex = 0; // всегда первый вариант
-            }
+            qDiv.appendChild(aDiv);
+            qWrap.appendChild(qDiv);
         });
 
-        const qIndex = globalStartIndex + index;
-        const correctValue = variants[correctIndex];
-
-        const shuffled = shuffle([...variants]);
-
-        const div = document.createElement('div');
-        div.className = 'question';
-
-        const p = document.createElement('p');
-        p.style.whiteSpace = 'pre-line';
-        p.textContent = (qIndex + 1) + '. ' + question;
-        div.appendChild(p);
-
-        const result = document.createElement('div');
-        result.id = 'result' + qIndex;
-
-        shuffled.forEach(v => {
-
-            const label = document.createElement('label');
-            label.className = 'variant';
-
-            const input = document.createElement('input');
-            input.type = 'radio';
-            input.name = 'q' + qIndex;
-            input.value = v;
-
-            input.addEventListener('change', () => {
-                checkAnswer(qIndex, v, correctValue);
-                disableAll(qIndex);
-            });
-
-            label.appendChild(input);
-            label.appendChild(document.createTextNode(' ' + v));
-            div.appendChild(label);
-        });
-
-        div.appendChild(result);
-        quiz.appendChild(div);
-    });
-}
-
-function checkAnswer(qIndex, selected, correctValue) {
-    const result = document.getElementById('result' + qIndex);
-
-    if (selected === correctValue) {
-        result.textContent = 'Дұрыс ✅';
-        result.className = 'correct';
-    } else {
-        result.innerHTML = `Қате ❌<br>Дұрыс жауап: <b>${correctValue}</b>`;
-        result.className = 'incorrect';
-    }
-}
-
-function shuffle(arr) {
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
-function renderPagination() {
-    const div = document.getElementById('pagination');
-    div.innerHTML = '';
-
-    const pages = Math.ceil(allQuestions.length / questionsPerPage);
-
-    for (let i = 1; i <= pages; i++) {
-        const btn = document.createElement('button');
-
-        btn.textContent = i;
-        if (i === currentPage) btn.classList.add('active');
-
-        btn.onclick = () => {
-            currentPage = i;
-            renderPage(i);
-            renderPagination();
+        caseDiv.onclick = () => {
+            qWrap.style.display =
+                qWrap.style.display === 'none' ? 'block' : 'none';
         };
 
-        div.appendChild(btn);
-    }
-}
-
-function shuffleQuestions() {
-    allQuestions = shuffle([...allQuestions]);
-    currentPage = 1;
-    renderPage(currentPage);
-    renderPagination();
-}
-
-function shuffleCurrentPage() {
-    const start = (currentPage - 1) * questionsPerPage;
-    const end = start + questionsPerPage;
-
-    const part = allQuestions.slice(start, end);
-    const shuffled = shuffle([...part]);
-
-    for (let i = 0; i < shuffled.length; i++) {
-        allQuestions[start + i] = shuffled[i];
-    }
-
-    renderPage(currentPage);
-}
-
-function resetAll() {
-    currentPage = 1;
-    loadTest();
-}
-
-function showAllAnswers() {
-    const questions = document.querySelectorAll('.question');
-    const startIndex = (currentPage - 1) * questionsPerPage;
-
-    questions.forEach((q, index) => {
-
-        const globalIndex = startIndex + index;
-        const block = allQuestions[globalIndex];
-        if (!block) return;
-
-        const lines = block.split('\n');
-
-        let variants = [];
-        let correctValue = '';
-
-        lines.forEach(line => {
-            if (line.startsWith('@@')) {
-                variants.push(line.replace('@@', '').trim());
-            }
-        });
-
-        correctValue = variants[0]; // первый всегда правильный
-
-        const inputs = q.querySelectorAll('input');
-
-        inputs.forEach(inp => {
-            inp.disabled = true;
-
-            if (inp.value === correctValue) {
-                inp.parentElement.style.color = 'green';
-                inp.parentElement.style.fontWeight = 'bold';
-            }
-        });
-
-        const resultDiv = document.getElementById('result' + globalIndex);
-        if (resultDiv) {
-            resultDiv.innerHTML = `✔ Дұрыс жауап: <b>${correctValue}</b>`;
-            resultDiv.className = 'correct';
-        }
+        container.appendChild(caseDiv);
+        container.appendChild(qWrap);
     });
-}
 
-loadTest();
-
+});
 </script>
-    
+
 </body>
-    
 </html>
